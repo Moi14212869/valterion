@@ -5,9 +5,6 @@ import {
 import {
   getFirestore, collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, query, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import {
-  getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 import { firebaseConfig } from "./firebase-config.js";
 import { RARITIES, RARITY_ORDER } from "./rarities.js";
@@ -15,7 +12,11 @@ import { RARITIES, RARITY_ORDER } from "./rarities.js";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
+
+// Dossier du dépôt GitHub où sont déposées les images des cartes.
+// Chemin relatif : fonctionne aussi bien en local, sur Firebase Hosting
+// que sur GitHub Pages (même dans un sous-dossier /nom-du-repo/).
+const IMAGE_FOLDER = "image/";
 
 const el = {
   uidChip: document.getElementById("uid-chip"),
@@ -33,10 +34,8 @@ const el = {
   form: document.getElementById("card-form"),
   title: document.getElementById("title"),
   description: document.getElementById("description"),
-  fileDrop: document.getElementById("file-drop"),
-  fileInput: document.getElementById("image"),
+  imageName: document.getElementById("image-name"),
   filePreview: document.getElementById("file-preview"),
-  fileDropText: document.getElementById("file-drop-text"),
   rarityGrid: document.getElementById("rarity-grid"),
   rarityInput: document.getElementById("rarity"),
   submitBtn: document.getElementById("submit-btn"),
@@ -44,8 +43,6 @@ const el = {
   adminList: document.getElementById("admin-list"),
   adminCount: document.getElementById("admin-count"),
 };
-
-let selectedFile = null;
 
 // ---------------- Auth state ----------------
 
@@ -122,16 +119,23 @@ RARITY_ORDER.forEach((key, i) => {
 });
 el.rarityInput.value = RARITY_ORDER[0];
 
-// ---------------- Image preview ----------------
+// ---------------- Image preview (fichier déjà présent dans image/ sur GitHub) ----------------
 
-el.fileInput.addEventListener("change", () => {
-  const file = el.fileInput.files[0];
-  if (!file) return;
-  selectedFile = file;
-  const url = URL.createObjectURL(file);
-  el.filePreview.src = url;
+el.imageName.addEventListener("input", () => {
+  const name = el.imageName.value.trim();
+  if (!name) {
+    el.filePreview.style.display = "none";
+    el.filePreview.removeAttribute("src");
+    return;
+  }
+  el.filePreview.src = IMAGE_FOLDER + name;
   el.filePreview.style.display = "block";
-  el.fileDropText.textContent = file.name;
+});
+
+el.filePreview.addEventListener("error", () => {
+  if (el.filePreview.getAttribute("src")) {
+    el.filePreview.style.display = "none";
+  }
 });
 
 // ---------------- Submit ----------------
@@ -144,25 +148,22 @@ el.form.addEventListener("submit", async (e) => {
     showStatus("Tu dois être connecté pour ajouter une carte.", "error");
     return;
   }
-  if (!selectedFile) {
-    showStatus("Choisis une image avant d'ajouter la carte.", "error");
+
+  const fileName = el.imageName.value.trim();
+  if (!fileName) {
+    showStatus("Indique le nom du fichier image.", "error");
     return;
   }
 
   el.submitBtn.disabled = true;
-  el.submitBtn.textContent = "Envoi en cours…";
+  el.submitBtn.textContent = "Ajout en cours…";
 
   try {
-    const imagePath = `cards/${Date.now()}_${selectedFile.name.replace(/\s+/g, "_")}`;
-    const imgRef = storageRef(storage, imagePath);
-    await uploadBytes(imgRef, selectedFile);
-    const imageUrl = await getDownloadURL(imgRef);
-
     await addDoc(collection(db, "cards"), {
       title: el.title.value.trim(),
       description: el.description.value.trim(),
-      imageUrl,
-      imagePath,
+      imageFile: fileName,
+      imageUrl: IMAGE_FOLDER + fileName,
       rarity: el.rarityInput.value,
       createdAt: serverTimestamp(),
       createdBy: auth.currentUser.uid,
@@ -182,10 +183,8 @@ el.form.addEventListener("submit", async (e) => {
 
 function resetForm() {
   el.form.reset();
-  selectedFile = null;
   el.filePreview.style.display = "none";
-  el.filePreview.src = "";
-  el.fileDropText.textContent = "Clique ou dépose une image ici (JPG, PNG, WebP)";
+  el.filePreview.removeAttribute("src");
   el.rarityGrid.querySelectorAll(".rarity-option").forEach((b, i) => b.classList.toggle("active", i === 0));
   el.rarityInput.value = RARITY_ORDER[0];
 }
@@ -219,29 +218,26 @@ async function loadCardList() {
     const row = document.createElement("div");
     row.className = "admin-row";
     row.innerHTML = `
-      <img src="${card.imageUrl || ""}" alt="">
+      <img src="${card.imageUrl || ""}" alt="" onerror="this.style.visibility='hidden'">
       <div class="admin-row-info">
         <div class="admin-row-title">${escapeHtml(card.title)}</div>
-        <div class="admin-row-desc">${escapeHtml(card.description || "")}</div>
+        <div class="admin-row-desc">${escapeHtml(card.imageFile || card.description || "")}</div>
       </div>
       <div class="admin-row-rarity" style="color:${rarity.color}">${rarity.label}</div>
-      <button class="icon-btn" title="Supprimer" data-id="${card.id}" data-path="${card.imagePath || ""}">✕</button>
+      <button class="icon-btn" title="Supprimer" data-id="${card.id}">✕</button>
     `;
     el.adminList.appendChild(row);
   }
 
   el.adminList.querySelectorAll(".icon-btn").forEach((btn) => {
-    btn.addEventListener("click", () => deleteCard(btn.dataset.id, btn.dataset.path));
+    btn.addEventListener("click", () => deleteCard(btn.dataset.id));
   });
 }
 
-async function deleteCard(id, imagePath) {
-  if (!confirm("Supprimer définitivement cette carte ? Les joueurs qui la possèdent déjà la garderont dans leur historique.")) return;
+async function deleteCard(id) {
+  if (!confirm("Supprimer définitivement cette carte ? Les joueurs qui la possèdent déjà la garderont dans leur historique. (L'image reste dans le dossier image/ du dépôt, à supprimer manuellement si besoin.)")) return;
   try {
     await deleteDoc(doc(db, "cards", id));
-    if (imagePath) {
-      try { await deleteObject(storageRef(storage, imagePath)); } catch (_) { /* image déjà absente, on ignore */ }
-    }
     await loadCardList();
   } catch (err) {
     alert("Erreur lors de la suppression : " + err.message);
