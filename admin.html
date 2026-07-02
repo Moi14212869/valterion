@@ -62,12 +62,10 @@
         </div>
 
         <div class="field">
-          <label>Image</label>
-          <div class="file-drop" id="file-drop">
-            <img id="file-preview" class="file-preview" alt="Aperçu">
-            <div class="file-drop-text" id="file-drop-text">Clique ou dépose une image ici (JPG, PNG, WebP)</div>
-            <input type="file" id="image" accept="image/*" required>
-          </div>
+          <label for="image-name">Nom du fichier image</label>
+          <input type="text" id="image-name" placeholder="dragon.png" required>
+          <div class="field-hint">Le fichier doit déjà exister dans le dossier <code>image/</code> de ton dépôt GitHub (même casse, avec l'extension).</div>
+          <img id="file-preview" class="file-preview" alt="Aperçu" style="margin-top:10px;">
         </div>
 
         <div class="field">
