@@ -179,6 +179,41 @@ a { color: inherit; }
 }
 .pack-dot.filled { background: var(--foil-gradient); }
 
+/* ---------- Trade-in card ---------- */
+
+.trade-card {
+  max-width: 420px;
+  margin: 0 auto 60px;
+  background: var(--bg-surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-l);
+  padding: 24px 28px;
+  text-align: center;
+}
+
+.trade-count {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-mid);
+  margin: 6px 0 14px;
+}
+.trade-count strong { color: var(--text-hi); font-size: 16px; }
+
+.trade-progress {
+  height: 6px;
+  border-radius: 100px;
+  background: var(--line);
+  overflow: hidden;
+  margin-bottom: 18px;
+}
+.trade-progress-fill {
+  height: 100%;
+  background: var(--foil-gradient);
+  transition: width 0.3s ease;
+}
+
+.trade-card .btn-primary { width: 100%; }
+
 /* ---------- The pack object ---------- */
 
 .pack-stage {
