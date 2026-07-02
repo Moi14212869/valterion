@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault — Ouvre tes packs</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page">
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span> Vault</div>
+    <div class="nav-links">
+      <a href="index.html" class="active">Packs</a>
+      <a href="admin.html">Gestion des cartes</a>
+    </div>
+    <div class="identity-chip" id="uid-chip">connexion…</div>
+  </div>
+
+  <div class="hero">
+    <div class="eyebrow">Tirage quotidien</div>
+    <h1>Cinq packs t'attendent<br>chaque jour</h1>
+    <p>Ouvre un pack pour révéler 5 cartes. Les raretés vont de commune à légendaire — les doublons existent, la chasse continue.</p>
+
+    <div class="pack-counter">
+      <span>Packs restants aujourd'hui</span>
+      <strong id="pack-count">–</strong>
+      <div class="pack-dots" id="pack-dots"></div>
+    </div>
+  </div>
+
+  <div class="pack-stage">
+    <div class="pack disabled" id="pack" title="Connexion en cours…">
+      <div class="pack-emblem">Pack du jour<span id="pack-sub">chargement…</span></div>
+    </div>
+  </div>
+
+  <div class="section-heading">
+    <h2>Ta collection</h2>
+    <div class="meta" id="collection-meta">0 / 0 cartes découvertes</div>
+  </div>
+
+  <div class="filters" id="filters">
+    <button class="filter-chip active" data-filter="all">Toutes</button>
+    <button class="filter-chip" data-filter="commune">Communes</button>
+    <button class="filter-chip" data-filter="rare">Rares</button>
+    <button class="filter-chip" data-filter="epique">Épiques</button>
+    <button class="filter-chip" data-filter="legendaire">Légendaires</button>
+  </div>
+
+  <div id="collection-grid" class="collection-grid"></div>
+</div>
+
+<div class="reveal-overlay" id="reveal-overlay">
+  <div class="reveal-cards" id="reveal-cards"></div>
+  <button class="reveal-close" id="reveal-close">Ranger dans la collection</button>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
