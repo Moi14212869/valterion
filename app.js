@@ -15,6 +15,7 @@ const db = getFirestore(app);
 
 const DAILY_PACKS = 5;
 const PACK_SIZE = 5;
+const DUPLICATES_PER_TRADE = 10;
 
 let currentUser = null;
 let userData = null;      // { lastClaimDate, packsRemaining, collection }
@@ -28,6 +29,9 @@ const el = {
   packSub: document.getElementById("pack-sub"),
   packCount: document.getElementById("pack-count"),
   packDots: document.getElementById("pack-dots"),
+  dupCount: document.getElementById("dup-count"),
+  dupFill: document.getElementById("dup-fill"),
+  tradeBtn: document.getElementById("trade-btn"),
   grid: document.getElementById("collection-grid"),
   meta: document.getElementById("collection-meta"),
   filters: document.getElementById("filters"),
@@ -108,6 +112,16 @@ function pickCardForRarity(rarity) {
 
 // ---------------- Pack opening ----------------
 
+function drawPackCards() {
+  const drawn = [];
+  for (let i = 0; i < PACK_SIZE; i++) {
+    const rarity = rollRarity();
+    const card = pickCardForRarity(rarity);
+    if (card) drawn.push(card);
+  }
+  return drawn;
+}
+
 el.pack.addEventListener("click", async () => {
   if (!userData || userData.packsRemaining <= 0) return;
   if (allCards.length === 0) {
@@ -119,12 +133,7 @@ el.pack.addEventListener("click", async () => {
   el.pack.style.pointerEvents = "none";
 
   setTimeout(async () => {
-    const drawn = [];
-    for (let i = 0; i < PACK_SIZE; i++) {
-      const rarity = rollRarity();
-      const card = pickCardForRarity(rarity);
-      if (card) drawn.push(card);
-    }
+    const drawn = drawPackCards();
 
     userData.packsRemaining -= 1;
     const isNew = {};
@@ -143,6 +152,82 @@ el.pack.addEventListener("click", async () => {
     showReveal(drawn, isNew);
     render();
   }, 480);
+});
+
+// ---------------- Trade duplicates for a pack ----------------
+
+function getDuplicateCount() {
+  let total = 0;
+  for (const id of Object.keys(userData.collection || {})) {
+    const count = userData.collection[id];
+    if (count > 1) total += count - 1;
+  }
+  return total;
+}
+
+// Choisit quels doublons dépenser : on pioche d'abord dans les raretés
+// les plus communes pour préserver les doublons rares le plus longtemps possible.
+function pickDuplicatesToSpend(amount) {
+  const toSpend = {};
+  let remaining = amount;
+  const sorted = [...allCards].sort(
+    (a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity)
+  );
+  for (const card of sorted) {
+    if (remaining <= 0) break;
+    const owned = userData.collection[card.id] || 0;
+    const surplus = owned - 1;
+    if (surplus <= 0) continue;
+    const take = Math.min(surplus, remaining);
+    toSpend[card.id] = take;
+    remaining -= take;
+  }
+  return remaining === 0 ? toSpend : null;
+}
+
+el.tradeBtn.addEventListener("click", async () => {
+  if (!userData) return;
+  if (allCards.length === 0) return;
+  if (el.tradeBtn.disabled) return;
+
+  const toSpend = pickDuplicatesToSpend(DUPLICATES_PER_TRADE);
+  if (!toSpend) return; // pas assez de doublons, le bouton devrait déjà être désactivé
+
+  el.tradeBtn.disabled = true;
+  el.tradeBtn.textContent = "Échange en cours…";
+
+  setTimeout(async () => {
+    const drawn = drawPackCards();
+
+    // On combine les mouvements (doublons dépensés en négatif, cartes tirées en positif)
+    // en un delta net par carte, pour n'envoyer qu'une seule mise à jour par champ Firestore.
+    const netDelta = {};
+    for (const [id, amount] of Object.entries(toSpend)) {
+      netDelta[id] = (netDelta[id] || 0) - amount;
+    }
+
+    const isNew = {};
+    for (const card of drawn) {
+      isNew[card.id] = !userData.collection[card.id];
+      netDelta[card.id] = (netDelta[card.id] || 0) + 1;
+    }
+
+    const collectionUpdates = {};
+    for (const [id, delta] of Object.entries(netDelta)) {
+      if (delta === 0) continue;
+      userData.collection[id] = (userData.collection[id] || 0) + delta;
+      if (userData.collection[id] <= 0) delete userData.collection[id];
+      collectionUpdates[`collection.${id}`] = increment(delta);
+    }
+
+    const ref = doc(db, "users", currentUser.uid);
+    await updateDoc(ref, collectionUpdates);
+
+    el.tradeBtn.disabled = false;
+    el.tradeBtn.textContent = `Échanger ${DUPLICATES_PER_TRADE} doublons contre un pack`;
+    showReveal(drawn, isNew);
+    render();
+  }, 300);
 });
 
 function showReveal(cards, isNew) {
@@ -203,7 +288,21 @@ function render() {
   el.pack.title = canOpen ? "Cliquer pour ouvrir un pack" : "Reviens demain pour tes prochains packs";
   el.packSub.textContent = canOpen ? "cliquer pour ouvrir" : "revenez demain";
 
+  renderTradePanel();
   renderCollection();
+}
+
+function renderTradePanel() {
+  const dupCount = getDuplicateCount();
+  const capped = Math.min(dupCount, DUPLICATES_PER_TRADE);
+  el.dupCount.textContent = dupCount;
+  el.dupFill.style.width = `${(capped / DUPLICATES_PER_TRADE) * 100}%`;
+
+  const canTrade = dupCount >= DUPLICATES_PER_TRADE;
+  el.tradeBtn.disabled = !canTrade;
+  el.tradeBtn.textContent = canTrade
+    ? `Échanger ${DUPLICATES_PER_TRADE} doublons contre un pack`
+    : `Échanger ${DUPLICATES_PER_TRADE} doublons contre un pack (${dupCount}/${DUPLICATES_PER_TRADE})`;
 }
 
 function renderCollection() {
