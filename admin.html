@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault — Gestion des cartes</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page">
+  <div class="topbar">
+    <div class="brand"><span class="brand-mark"></span> Vault</div>
+    <div class="nav-links">
+      <a href="index.html">Packs</a>
+      <a href="admin.html" class="active">Gestion des cartes</a>
+    </div>
+    <div class="identity-chip" id="uid-chip">non connecté</div>
+  </div>
+
+  <!-- Écran de connexion admin -->
+  <div id="login-screen">
+    <div class="hero" style="padding-top:0;">
+      <div class="eyebrow">Accès restreint</div>
+      <h1 style="font-size:32px;">Connexion administrateur</h1>
+      <p>Seul un compte admin autorisé peut ajouter ou supprimer des cartes.</p>
+    </div>
+
+    <form class="form-card" id="login-form" style="margin:0 auto;">
+      <div class="field">
+        <label for="login-email">E-mail</label>
+        <input type="text" id="login-email" placeholder="admin@exemple.com" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Mot de passe</label>
+        <input type="text" id="login-password" placeholder="••••••••" autocomplete="current-password" required style="-webkit-text-security: disc;">
+      </div>
+      <button type="submit" class="btn-primary" id="login-btn">Se connecter</button>
+      <div class="status-msg" id="login-status"></div>
+    </form>
+  </div>
+
+  <!-- Contenu admin, visible uniquement une fois connecté -->
+  <div id="admin-content" style="display:none;">
+    <div class="hero" style="padding-top:0;">
+      <div class="eyebrow">Panneau créateur</div>
+      <h1 style="font-size:32px;">Ajoute une nouvelle carte</h1>
+      <p>Chaque carte ajoutée ici devient immédiatement disponible dans les packs, selon sa rareté.</p>
+      <button class="btn-ghost" id="logout-btn" style="margin-top:6px;">Se déconnecter</button>
+    </div>
+
+    <div class="admin-layout">
+      <form class="form-card" id="card-form">
+        <div class="field">
+          <label for="title">Titre</label>
+          <input type="text" id="title" placeholder="Ex. Dragon des Cimes" maxlength="60" required>
+        </div>
+
+        <div class="field">
+          <label for="description">Description</label>
+          <textarea id="description" placeholder="Une brève description de la carte…" maxlength="240" required></textarea>
+        </div>
+
+        <div class="field">
+          <label>Image</label>
+          <div class="file-drop" id="file-drop">
+            <img id="file-preview" class="file-preview" alt="Aperçu">
+            <div class="file-drop-text" id="file-drop-text">Clique ou dépose une image ici (JPG, PNG, WebP)</div>
+            <input type="file" id="image" accept="image/*" required>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Rareté</label>
+          <div class="rarity-select-grid" id="rarity-grid"></div>
+          <input type="hidden" id="rarity" required>
+        </div>
+
+        <button type="submit" class="btn-primary" id="submit-btn">Ajouter la carte</button>
+        <div class="status-msg" id="status-msg"></div>
+      </form>
+
+      <div>
+        <div class="section-heading" style="margin-top:0;">
+          <h2>Cartes existantes</h2>
+          <div class="meta" id="admin-count">0 carte</div>
+        </div>
+        <div class="admin-list" id="admin-list">
+          <div class="loader"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="admin.js"></script>
+</body>
+</html>
